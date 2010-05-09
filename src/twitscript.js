@@ -25,6 +25,8 @@ exports.init = function(setupObj) {
 			** Note: versioning is not currently used by search.twitter functions; when Twitter moves their junk, it'll be supported.
 	*/
 
+  if (setupObj == null) setupObj = {};
+
 	/* Store any usernames, etc that were passed in */
 	this.username = setupObj.username;
 	this.password = setupObj.password;
@@ -35,7 +37,7 @@ exports.init = function(setupObj) {
 	this.search_opener = http.createClient(80, "search.twitter.com");
 	
 	this.headers = {
-	    'Accept': '*/*',
+	  'Accept': '*/*',
 		'Host': 'api.twitter.com',
 		'User-Agent': 'Twitscript Node.js Client'
 	};
@@ -48,7 +50,7 @@ exports.init = function(setupObj) {
 		}
 	}
 	
-	if(this.username !== null && this.password !== null) {
+	if(this.username != null && this.password != null) {
 		// Trust that what we got passed is correct; we can verify it with a hit to verify_credentials.json
 		this.authenticated = true;
 
@@ -80,7 +82,7 @@ exports.init.prototype = {
 
 			resp.setBodyEncoding("utf8");
 			
-			if(statusCode !== 200) return sys.puts("Request to " + fullURL + " failed with a " + statusCode + " error code.");
+			if(statusCode !== 200) return sys.puts("Request to " + fullURL + " failed with a " + statusCode + " error code.\nHeaders: " + sys.inspect(resp.headers));
 
 			resp.addListener("data", function(chunk) {
 				finalResp += chunk;
@@ -98,7 +100,8 @@ exports.init.prototype = {
 		var returnURL = base_url + "?lol=1"; // Cheap hack, because it's 1:41 AM. Refactor if you care.
 
 		for(var i in params) {
-			returnURL += "&" + i.toString() + "=" + params[i];
+		  if (params[i])
+			  returnURL += "&" + i.toString() + "=" + params[i];
 		}
 		
 		return returnURL;
@@ -426,9 +429,9 @@ exports.init.prototype = {
 			...will result in only publicly available data being returned.
 		*/
 		var apiURL = "";
-		if(paramsObj.id) apiURL = "/users/show/" + id + ".json";
-		else if(paramsObj.user_id) apiURL = "/users/show.json?user_id=" + user_id;
-		else if(paramsObj.screen_name) apiURL = "/users/show.json?screen_name=" + screen_name;
+		if(paramsObj.id) apiURL = "/users/show/" + paramsObj.id + ".json";
+		else if(paramsObj.user_id) apiURL = "/users/show.json?user_id=" + paramsObj.user_id;
+		else if(paramsObj.screen_name) apiURL = "/users/show.json?screen_name=" + paramsObj.screen_name;
 		else return sys.puts("You need to specify an id, user_id, or screen_name for showUser()");
 
 		return this.makeRequest({
