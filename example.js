@@ -1,15 +1,7 @@
 var twit = require("./src/twitscript"),
 	sys = require("sys");
 
-var twitter = new twit.init({
-	username: "example", 
-	password: "example"
-});
-
-/*
-twitter.updateStatus({status: "I'm about to push this project up"}, function(data) {
-	sys.puts("Sent?");
-}); */
+var twitter = new twit.init();
 
 /*	Yeeeaaahhh bulk user lookup API */
 twitter.bulkUserLookup({screen_names: ["ryanmcgrath", "enotionz"]}, function(data) {

@@ -9,7 +9,8 @@
 
 var sys = require("sys"),
     http = require("http"),
-	base64 = require("./vendor/base64");
+	base64 = require("./vendor/base64"),
+	streaming = require("./streaming");
 
 exports.init = function(setupObj) {
 	/*	new twitscript.init({username: "example", password: "example", headers: "example", version: 1})
@@ -25,42 +26,34 @@ exports.init = function(setupObj) {
 			** Note: versioning is not currently used by search.twitter functions; when Twitter moves their junk, it'll be supported.
 	*/
 
-	/* Store any usernames, etc that were passed in */
-	this.username = setupObj.username;
-	this.password = setupObj.password;
-	this.headers = setupObj.headers;
-	this.version = typeof setupObj.version === "undefined" ? 1 : setupObj.version;
-	this.authenticated = false;
-	this.opener = http.createClient(80, "api.twitter.com");
-	this.search_opener = http.createClient(80, "search.twitter.com");
-	
 	this.headers = {
 	    'Accept': '*/*',
 		'Host': 'api.twitter.com',
 		'User-Agent': 'Twitscript Node.js Client'
 	};
 	
-	/*	Quick patch to get around process.mixin() deprecation. This doesn't do a deep copy by any means,
-		but for a simple headers object it should be enough. At some point, this should be looked at again though... */
-	if(typeof setupObj.headers !== "undefined") {
-		for(var i in setupObj.headers) {
-			this.headers[i] = setupObj.headers[i];
+	/* Store any params that were passed in. */
+	if(setupObj) {
+		this.headers = setupObj.headers ? setupObj.headers : null;
+		this.version = setupObj.version ? setupObj.version : 1;
+	
+		/*	Quick patch to get around process.mixin() deprecation. This doesn't do a deep copy by any means,
+			but for a simple headers object it should be enough. At some point, this should be looked at again though... */
+		if(setupObj.headers) {
+			for(var i in setupObj.headers) {
+				this.headers[i] = setupObj.headers[i];
+			}
 		}
 	}
 	
-	if(this.username !== null && this.password !== null) {
-		// Trust that what we got passed is correct; we can verify it with a hit to verify_credentials.json
-		this.authenticated = true;
-
-		var auth = base64.encode(this.username + ':' + this.password);
-		this.headers['Authorization'] = "Basic " + auth;
-
-		// Don't keep their password in memory...
-		this.password = "";		
-	}
+	this.authenticated = false;
+	this.opener = http.createClient(80, "api.twitter.com");
+	this.search_opener = http.createClient(80, "search.twitter.com");
 }
 
 exports.init.prototype = {	
+	streamer: null,
+	
 	makeRequest: function(reqObj) {
 		var request = null,
 			searchOpener = null,
@@ -78,7 +71,7 @@ exports.init.prototype = {
 			var statusCode = resp.statusCode,
 				finalResp = "";
 
-			resp.setBodyEncoding("utf8");
+			resp.setEncoding("utf8");
 			
 			if(statusCode !== 200) return sys.puts("Request to " + fullURL + " failed with a " + statusCode + " error code.");
 
@@ -102,6 +95,24 @@ exports.init.prototype = {
 		}
 		
 		return returnURL;
+	},
+
+	stream: function(params) {
+		this.streamer = new streaming.Streamer({
+			auth: this.headers['Authorization'],
+			headers: params.headers || {
+				'Accept': '*/*',
+				'Host': params.api || 'stream.twitter.com',
+				'User-Agent': 'Twitscript Node.js Client',
+			},
+			port: params.port || 80,
+			type: params.type || 'filter',
+			api: params.api || 'stream.twitter.com',
+			follow: params.follow || [],
+			keywords: params.keywords || [],
+			locations: params.locations || [],
+		});
+		return this.streamer;
 	},
 
 	verifyCredentials: function(callbackfn) {
